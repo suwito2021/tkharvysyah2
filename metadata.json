@@ -1,0 +1,5 @@
+{
+  "name": "Aplikasi Setoran Hafalan TK Harvysyah",
+  "description": "A web portal for teachers, parents, and principals to manage and view student islamic learning achievements, connected to Google Sheets.",
+  "requestFramePermissions": []
+}
