@@ -51,6 +51,7 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
   const [scores, setScores] = useState<Score[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedClass, setSelectedClass] = useState<string>('all');
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -76,12 +77,15 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
     fetchAllData();
   }, []);
 
+  const classes = students ? [...new Set(students.map(s => s.Class).filter(Boolean))] : [];
+  const filteredStudents = selectedClass === 'all' ? students : students?.filter(s => s.Class === selectedClass) || null;
+
   const teacherColumns = [{ header: 'Nama', accessor: 'Name' as keyof Teacher}, { header: 'Telepon', accessor: 'Phone' as keyof Teacher}, { header: 'Kelas', accessor: 'Class' as keyof Teacher}];
   const studentColumns = [{ header: 'Nama', accessor: 'Name' as keyof Student}, { header: 'NISN', accessor: 'NISN' as keyof Student}, { header: 'Kelas', accessor: 'Class' as keyof Student}];
   const principalColumns = [{ header: 'Nama', accessor: 'Name' as keyof Principal}, { header: 'Telepon', accessor: 'Phone' as keyof Principal}];
   const scoreColumns = [
-    { header: 'ID Siswa', accessor: 'Student ID' as keyof Score}, 
-    { header: 'Kategori', accessor: 'Category' as keyof Score}, 
+    { header: 'ID Siswa', accessor: 'Student ID' as keyof Score},
+    { header: 'Kategori', accessor: 'Category' as keyof Score},
     { header: 'Item', accessor: 'Item Name' as keyof Score},
     { header: 'Skor', accessor: 'Score' as keyof Score},
     { header: 'Tanggal', accessor: 'Date' as keyof Score},
@@ -107,7 +111,24 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
         <div>
           <DataTable title="Data Kepala Sekolah" data={principals} columns={principalColumns} />
           <DataTable title="Data Guru" data={teachers} columns={teacherColumns} />
-          <DataTable title="Data Siswa" data={students} columns={studentColumns} />
+          <div className="mb-8">
+            <h3 className="text-xl font-bold text-gray-700 mb-4">Data Siswa</h3>
+            <div className="mb-4">
+              <label htmlFor="class-select" className="block text-sm font-medium text-gray-700 mb-2">Pilih Kelas:</label>
+              <select
+                id="class-select"
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="all">Semua Kelas</option>
+                {classes.map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+            </div>
+            <DataTable title="" data={filteredStudents} columns={studentColumns} />
+          </div>
           <DataTable title="Semua Data Penilaian" data={scores} columns={scoreColumns} />
         </div>
       )}
