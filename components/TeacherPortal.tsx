@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getSheetData, addScore } from '../services/googleSheetsService';
 import type { Student, Score, Teacher, Hafalan } from '../types';
 import { ChevronLeftIcon, BookIcon, PrayingHandsIcon, QuoteIcon, ChartBarIcon, NotYetDevelopedIcon, StartingToDevelopIcon, DevelopingAsExpectedIcon, VeryWellDevelopedIcon } from './icons';
@@ -43,6 +44,11 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
   
   const [mainTab, setMainTab] = useState<'input' | 'report'>('input');
   const [activeSubTab, setActiveSubTab] = useState<InputTabKey>('surah');
+
+  // Filter states for report
+  const [selectedStudent, setSelectedStudent] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   const [formData, setFormData] = useState<Omit<Score, 'Timestamp'>>({
     'Student ID': '',
@@ -120,6 +126,50 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
 
   const studentMap = useMemo(() => new Map(students.map(s => [s.NISN, s.Name])), [students]);
   const filteredHafalanItems = useMemo(() => hafalanItems.filter(item => item.Category === INPUT_TABS[activeSubTab].category), [hafalanItems, activeSubTab]);
+
+  const filteredScores = useMemo(() => {
+    let filtered = scores;
+    if (selectedStudent) {
+      filtered = filtered.filter(score => score['Student ID'] === selectedStudent);
+    }
+    if (startDate) {
+      filtered = filtered.filter(score => score.Date >= startDate);
+    }
+    if (endDate) {
+      filtered = filtered.filter(score => score.Date <= endDate);
+    }
+    return filtered;
+  }, [scores, selectedStudent, startDate, endDate]);
+
+  const scoreCountsSurah = useMemo(() => {
+    const counts = { BB: 0, MB: 0, BSH: 0, BSB: 0 };
+    filteredScores.filter(score => score.Category === 'Hafalan Surah Pendek').forEach(score => {
+      if (counts[score.Score as keyof typeof counts] !== undefined) {
+        counts[score.Score as keyof typeof counts]++;
+      }
+    });
+    return Object.entries(counts).map(([score, count]) => ({ score, count }));
+  }, [filteredScores]);
+
+  const scoreCountsDoa = useMemo(() => {
+    const counts = { BB: 0, MB: 0, BSH: 0, BSB: 0 };
+    filteredScores.filter(score => score.Category === 'Hafalan Doa Sehari-hari').forEach(score => {
+      if (counts[score.Score as keyof typeof counts] !== undefined) {
+        counts[score.Score as keyof typeof counts]++;
+      }
+    });
+    return Object.entries(counts).map(([score, count]) => ({ score, count }));
+  }, [filteredScores]);
+
+  const scoreCountsHadist = useMemo(() => {
+    const counts = { BB: 0, MB: 0, BSH: 0, BSB: 0 };
+    filteredScores.filter(score => score.Category === 'Hafalan Hadist').forEach(score => {
+      if (counts[score.Score as keyof typeof counts] !== undefined) {
+        counts[score.Score as keyof typeof counts]++;
+      }
+    });
+    return Object.entries(counts).map(([score, count]) => ({ score, count }));
+  }, [filteredScores]);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -227,29 +277,97 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
     return (
       <div>
         <h3 className="text-xl font-semibold text-gray-800 mb-4">Laporan Penilaian Kelas {teacher.Class}</h3>
-        <div className="overflow-x-auto border rounded-lg">
+        <div className="mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Filter Siswa</label>
+              <select value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500">
+                <option value="">Semua Siswa</option>
+                {students.map(student => <option key={student.NISN} value={student.NISN}>{student.Name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Tanggal Mulai</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Tanggal Akhir</label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500" />
+            </div>
+            <div className="flex items-end">
+              <button onClick={() => {setSelectedStudent(''); setStartDate(''); setEndDate('');}} className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Reset Filter</button>
+            </div>
+          </div>
+        </div>
+        <div className="border rounded-lg">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-emerald-600">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Siswa</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Penilaian</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Skor</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">No</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Nama Siswa</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Kategori</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Item Hafalan</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Rating</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Tanggal</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Catatan</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {scores.map((score, index) => (
+              {filteredScores.map((score, index) => (
                 <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{studentMap.get(score['Student ID']) || score['Student ID']}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{score.Date}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{score.Category}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{score['Item Name']}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{score.Score}</td>
+                  <td className="px-4 py-4 text-sm text-gray-900 break-words">{index + 1}</td>
+                  <td className="px-4 py-4 text-sm text-gray-900 font-medium break-words">{studentMap.get(score['Student ID']) || score['Student ID']}</td>
+                  <td className="px-4 py-4 text-sm text-gray-900 break-words">{score.Category}</td>
+                  <td className="px-4 py-4 text-sm text-gray-900 break-words">{score['Item Name']}</td>
+                  <td className="px-4 py-4 text-sm text-gray-900 font-semibold break-words">{score.Score}</td>
+                  <td className="px-4 py-4 text-sm text-gray-500 break-words">{score.Date}</td>
+                  <td className="px-4 py-4 text-sm text-gray-900 break-words">{score.Notes || '-'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+        {filteredScores.length === 0 && scores.length > 0 && <p className="text-center text-gray-500 py-4">Tidak ada data yang cocok dengan filter.</p>}
+        <div className="mt-8">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Grafik Capaian Penilaian</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h5 className="text-md font-medium text-gray-700 mb-2">Hafalan Surah Pendek</h5>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={scoreCountsSurah}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="score" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#10b981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div>
+              <h5 className="text-md font-medium text-gray-700 mb-2">Hafalan Doa Sehari-hari</h5>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={scoreCountsDoa}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="score" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div>
+              <h5 className="text-md font-medium text-gray-700 mb-2">Hafalan Hadist</h5>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={scoreCountsHadist}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="score" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#ef4444" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       </div>
     );
