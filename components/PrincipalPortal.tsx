@@ -52,6 +52,8 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
   const [isLoading, setIsLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'guru' | 'siswa' | 'laporan'>('guru');
+  const [currentPage, setCurrentPage] = useState(1);
+  const studentsPerPage = 10;
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -77,6 +79,18 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
 
   const classes = students ? [...new Set(students.map(s => s.Class).filter(Boolean))] : [];
   const filteredStudents = selectedClass === 'all' ? students : students?.filter(s => s.Class === selectedClass) || null;
+
+  // Pagination logic
+  const totalStudents = filteredStudents?.length || 0;
+  const totalPages = Math.ceil(totalStudents / studentsPerPage);
+  const startIndex = (currentPage - 1) * studentsPerPage;
+  const endIndex = startIndex + studentsPerPage;
+  const paginatedStudents = filteredStudents?.slice(startIndex, endIndex) || null;
+
+  // Reset to page 1 when class filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedClass]);
 
   const teacherColumns = [{ header: 'Nama', accessor: 'Name' as keyof Teacher}, { header: 'Telepon', accessor: 'Phone' as keyof Teacher}, { header: 'Kelas', accessor: 'Class' as keyof Teacher}];
   const studentColumns = [{ header: 'Nama', accessor: 'Name' as keyof Student}, { header: 'NISN', accessor: 'NISN' as keyof Student}, { header: 'Kelas', accessor: 'Class' as keyof Student}];
@@ -160,7 +174,28 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
                   ))}
                 </select>
               </div>
-              <DataTable title="Data Siswa" data={filteredStudents} columns={studentColumns} />
+              <DataTable title={`Data Siswa (Halaman ${currentPage} dari ${totalPages})`} data={paginatedStudents} columns={studentColumns} />
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center mt-4">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-emerald-500 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-emerald-600"
+                  >
+                    Sebelumnya
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    Halaman {currentPage} dari {totalPages} ({totalStudents} siswa)
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-emerald-500 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-emerald-600"
+                  >
+                    Selanjutnya
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {activeTab === 'laporan' && <DataTable title="Laporan Penilaian" data={scores} columns={scoreColumns} />}
