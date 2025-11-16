@@ -60,6 +60,7 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
   const [reportStartDate, setReportStartDate] = useState<string>('');
   const [reportEndDate, setReportEndDate] = useState<string>('');
   const [selectedStudentForReport, setSelectedStudentForReport] = useState<string>('');
+  const [selectedClassForReport, setSelectedClassForReport] = useState<string>('all');
   const [reportPage, setReportPage] = useState(1);
   const reportsPerPage = 10;
   const [studentSummaryPage, setStudentSummaryPage] = useState(1);
@@ -105,11 +106,11 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
   // Reset pages when filters change
   useEffect(() => {
     setReportPage(1);
-  }, [reportStartDate, reportEndDate, selectedStudentForReport]);
+  }, [reportStartDate, reportEndDate, selectedStudentForReport, selectedClassForReport]);
 
   useEffect(() => {
     setStudentSummaryPage(1);
-  }, [reportStartDate, reportEndDate]); // Reset student summary page when date filters change
+  }, [reportStartDate, reportEndDate, selectedClassForReport]); // Reset student summary page when date/class filters change
 
   // Filtered scores for reports
   const filteredReportScores = useMemo(() => {
@@ -121,11 +122,15 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
     if (reportEndDate) {
       filtered = filtered.filter(score => score.Date <= reportEndDate);
     }
+    if (selectedClassForReport !== 'all') {
+      const classStudents = students?.filter(s => s.Class === selectedClassForReport).map(s => s.NISN) || [];
+      filtered = filtered.filter(score => classStudents.includes(score['Student ID']));
+    }
     if (selectedStudentForReport) {
       filtered = filtered.filter(score => score['Student ID'] === selectedStudentForReport);
     }
     return filtered;
-  }, [scores, reportStartDate, reportEndDate, selectedStudentForReport]);
+  }, [scores, reportStartDate, reportEndDate, selectedStudentForReport, selectedClassForReport, students]);
 
   // Pagination for reports
   const totalReportPages = Math.ceil(filteredReportScores.length / reportsPerPage);
@@ -381,7 +386,7 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
               {/* Filters */}
               <div className="bg-white p-6 rounded-lg shadow mb-6">
                 <h4 className="text-lg font-semibold text-gray-800 mb-4">Filter Data</h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
                     <input
@@ -401,6 +406,19 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+                    <select
+                      value={selectedClassForReport}
+                      onChange={(e) => setSelectedClassForReport(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="all">Semua Kelas</option>
+                      {classes.map(cls => (
+                        <option key={cls} value={cls}>{cls}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Siswa</label>
                     <select
                       value={selectedStudentForReport}
@@ -408,7 +426,7 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       <option value="">Semua Siswa</option>
-                      {students?.map(student => (
+                      {students?.filter(s => selectedClassForReport === 'all' || s.Class === selectedClassForReport).map(student => (
                         <option key={student.NISN} value={student.NISN}>
                           {student.Name} ({student.NISN})
                         </option>
@@ -420,6 +438,7 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
                       onClick={() => {
                         setReportStartDate('');
                         setReportEndDate('');
+                        setSelectedClassForReport('all');
                         setSelectedStudentForReport('');
                       }}
                       className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
