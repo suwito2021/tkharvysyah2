@@ -194,8 +194,23 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
   const studentSummaryData = useMemo(() => {
     if (!students || !scores) return [];
 
-    return students.map(student => {
-      const studentScores = scores.filter(score => score['Student ID'] === student.NISN);
+    // Filter students by class if selected
+    let filteredStudents = students;
+    if (selectedClassForReport !== 'all') {
+      filteredStudents = students.filter(s => s.Class === selectedClassForReport);
+    }
+
+    // Filter scores by date range for summary
+    let filteredScoresForSummary = scores;
+    if (reportStartDate) {
+      filteredScoresForSummary = filteredScoresForSummary.filter(score => score.Date >= reportStartDate);
+    }
+    if (reportEndDate) {
+      filteredScoresForSummary = filteredScoresForSummary.filter(score => score.Date <= reportEndDate);
+    }
+
+    return filteredStudents.map(student => {
+      const studentScores = filteredScoresForSummary.filter(score => score['Student ID'] === student.NISN);
 
       // Calculate score levels
       const scoreLevels = { BB: 0, MB: 0, BSH: 0, BSB: 0 };
@@ -228,7 +243,7 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
         latestDate
       };
     }).sort((a, b) => b.totalAssessments - a.totalAssessments); // Sort by most active students first
-  }, [students, scores]);
+  }, [students, scores, reportStartDate, reportEndDate, selectedClassForReport]);
 
   // Pagination for student summary
   const totalStudentSummaryPages = Math.ceil(studentSummaryData.length / studentsPerSummaryPage);
