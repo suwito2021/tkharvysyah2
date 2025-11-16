@@ -179,6 +179,46 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
     };
   }, [selectedStudentForReport, scores, students]);
 
+  // Student summary data for rekap laporan
+  const studentSummaryData = useMemo(() => {
+    if (!students || !scores) return [];
+
+    return students.map(student => {
+      const studentScores = scores.filter(score => score['Student ID'] === student.NISN);
+
+      // Calculate score levels
+      const scoreLevels = { BB: 0, MB: 0, BSH: 0, BSB: 0 };
+      studentScores.forEach(score => {
+        if (scoreLevels[score.Score as keyof typeof scoreLevels] !== undefined) {
+          scoreLevels[score.Score as keyof typeof scoreLevels]++;
+        }
+      });
+
+      // Calculate average score (assigning numeric values: BB=1, MB=2, BSH=3, BSB=4)
+      const scoreValues = { BB: 1, MB: 2, BSH: 3, BSB: 4 };
+      const totalScoreValue = studentScores.reduce((sum, score) => sum + scoreValues[score.Score as keyof typeof scoreValues], 0);
+      const averageScore = studentScores.length > 0 ? (totalScoreValue / studentScores.length).toFixed(1) : '0';
+
+      // Get latest assessment date
+      const latestDate = studentScores.length > 0
+        ? studentScores.sort((a, b) => new Date(b.Date).getTime() - new Date(a.Date).getTime())[0].Date
+        : '-';
+
+      return {
+        nisn: student.NISN,
+        name: student.Name,
+        class: student.Class,
+        totalAssessments: studentScores.length,
+        bb: scoreLevels.BB,
+        mb: scoreLevels.MB,
+        bsh: scoreLevels.BSH,
+        bsb: scoreLevels.BSB,
+        averageScore,
+        latestDate
+      };
+    }).sort((a, b) => b.totalAssessments - a.totalAssessments); // Sort by most active students first
+  }, [students, scores]);
+
   // Chart data calculations
   const scoreLevelData = useMemo(() => {
     const levels = { BB: 0, MB: 0, BSH: 0, BSB: 0 };
@@ -530,6 +570,57 @@ const PrincipalPortal: React.FC<PrincipalPortalProps> = ({ onBack, principal }) 
                   </div>
                 </div>
               )}
+
+              {/* Rekap Laporan per Siswa */}
+              <div className="mt-8">
+                <div className="bg-white rounded-lg shadow">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h4 className="text-lg font-semibold text-gray-800">Rekap Laporan per Siswa</h4>
+                    <p className="text-sm text-gray-600 mt-1">Ringkasan performa setiap siswa berdasarkan penilaian yang telah dilakukan</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Siswa</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NISN</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Penilaian</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BB</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MB</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BSH</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BSB</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rata-rata</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Penilaian Terakhir</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {studentSummaryData.map((student, index) => (
+                          <tr key={student.nisn} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.nisn}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.class}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-blue-600">{student.totalAssessments}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-red-600 font-semibold">{student.bb}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-yellow-600 font-semibold">{student.mb}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-green-600 font-semibold">{student.bsh}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-emerald-600 font-semibold">{student.bsb}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-bold text-gray-900">{student.averageScore}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.latestDate}</td>
+                          </tr>
+                        ))}
+                        {studentSummaryData.length === 0 && (
+                          <tr>
+                            <td colSpan={10} className="px-6 py-4 text-center text-gray-500">
+                              Tidak ada data siswa
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
 
               {/* Data Table with Pagination */}
               <div className="mt-8">
