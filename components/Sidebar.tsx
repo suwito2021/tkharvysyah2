@@ -15,12 +15,12 @@ interface SidebarProps {
 
 const NavLink: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void; }> = ({ icon, label, onClick }) => (
     <a
-        href="#"
-        onClick={(e) => { e.preventDefault(); onClick(); }}
-        className="text-gray-300 hover:bg-emerald-700 hover:text-white group flex items-center px-3 py-2 text-base font-medium rounded-md"
+      href="#"
+      onClick={(e) => { e.preventDefault(); onClick(); }}
+      className="text-gray-200 hover:bg-emerald-800 hover:text-white group flex items-center gap-3 px-4 py-3 text-lg font-medium rounded-lg transition-all duration-150"
     >
-        {icon}
-        {label}
+      {icon}
+      <span className="ml-1">{label}</span>
     </a>
 );
 
@@ -38,31 +38,31 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, onGoHome
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 flex flex-col w-64 bg-emerald-900 text-white transform transition-transform duration-300 ease-in-out z-50 ${
+        className={`fixed inset-y-0 left-0 flex flex-col w-64 bg-emerald-900 text-white transform transition-transform duration-300 ease-in-out z-50 shadow-xl ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0 md:flex`}
       >
-        <div className="flex items-center justify-between h-16 flex-shrink-0 px-4 bg-emerald-800">
-           <h1 className="text-xl font-bold">Navigasi Portal</h1>
-           <button onClick={onClose} className="md:hidden p-1 rounded-full text-white hover:bg-emerald-700">
+          <div className="flex items-center justify-between h-16 flex-shrink-0 px-6 bg-emerald-800 border-b border-emerald-700">
+            <h1 className="text-2xl font-extrabold tracking-wide">Navigasi Portal</h1>
+            <button onClick={onClose} className="md:hidden p-2 rounded-full text-white hover:bg-emerald-700 transition-all duration-150">
               <XIcon className="w-6 h-6"/>
-           </button>
-        </div>
+            </button>
+          </div>
         
-        <nav className="flex-1 px-2 py-4 space-y-2">
-            <NavLink icon={<HomeIcon className={commonIconClass} />} label="Home" onClick={onGoHome} />
-            <hr className="border-t border-emerald-700 my-4" />
-            <NavLink icon={<BookIcon className={commonIconClass} />} label="Portal Guru" onClick={() => onNavigate('teacher')} />
-            <NavLink icon={<UsersIcon className={commonIconClass} />} label="Portal Orang Tua" onClick={() => onNavigate('parent')} />
-            <NavLink icon={<ShieldCheckIcon className={commonIconClass} />} label="Portal Kepala Sekolah" onClick={() => onNavigate('principal')} />
-            <hr className="border-t border-emerald-700 my-4" />
-            <NavLink icon={<InfoIcon className={commonIconClass} />} label="Info Sekolah" onClick={onShowSchoolInfo} />
+        <nav className="flex-1 px-2 py-6 space-y-2">
+          <NavLink icon={<HomeIcon className={commonIconClass} />} label="Home" onClick={onGoHome} />
+          <hr className="border-t border-emerald-700 my-4" />
+          <NavLink icon={<BookIcon className={commonIconClass} />} label="Portal Guru" onClick={() => onNavigate('teacher')} />
+          <NavLink icon={<UsersIcon className={commonIconClass} />} label="Portal Orang Tua" onClick={() => onNavigate('parent')} />
+          <NavLink icon={<ShieldCheckIcon className={commonIconClass} />} label="Portal Kepala Sekolah" onClick={() => onNavigate('principal')} />
+          <hr className="border-t border-emerald-700 my-4" />
+          <NavLink icon={<InfoIcon className={commonIconClass} />} label="Info Sekolah" onClick={onShowSchoolInfo} />
         </nav>
 
         {isLoggedIn && (
-            <div className="px-2 py-4 border-t border-emerald-700">
-                 <NavLink icon={<LogOutIcon className={commonIconClass} />} label="Logout" onClick={onLogout} />
-            </div>
+          <div className="px-2 py-4 border-t border-emerald-700">
+             <NavLink icon={<LogOutIcon className={commonIconClass} />} label="Logout" onClick={onLogout} />
+          </div>
         )}
       </div>
     </Fragment>

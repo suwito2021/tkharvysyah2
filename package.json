@@ -16,6 +16,7 @@
     "recharts": "^3.4.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
     "@types/jspdf": "^1.3.3",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
