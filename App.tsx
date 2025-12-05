@@ -73,26 +73,23 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-cyan-100 to-white font-sans flex">
-      {/* Sidebar */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        onClose={closeSidebar}
-        onNavigate={handlePortalSelect}
-        onGoHome={handleBackToHome}
-        onShowSchoolInfo={handleShowSchoolInfo}
-        isLoggedIn={!!loggedInUser}
-        onLogout={handleBackToHome}
-      />
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col transition-all duration-300 md:pl-64 min-h-screen">
-        <Header onMenuClick={toggleSidebar} />
-        <main className="flex-grow p-4 md:p-8 flex items-center justify-center">
-          {renderPortal()}
-        </main>
-      </div>
-      {/* Modal Info Sekolah */}
-      {isSchoolInfoVisible && <SchoolInfoModal onClose={handleCloseSchoolInfo} />}
+    <div className="min-h-screen bg-gray-100 font-sans">
+        <Sidebar 
+            isOpen={isSidebarOpen} 
+            onClose={closeSidebar}
+            onNavigate={handlePortalSelect}
+            onGoHome={handleBackToHome}
+            onShowSchoolInfo={handleShowSchoolInfo}
+            isLoggedIn={!!loggedInUser}
+            onLogout={handleBackToHome}
+        />
+        <div className="flex flex-col transition-all duration-300 md:pl-64">
+            <Header onMenuClick={toggleSidebar} />
+            <main className="flex-grow p-4 md:p-8 flex items-center justify-center">
+                {renderPortal()}
+            </main>
+        </div>
+        {isSchoolInfoVisible && <SchoolInfoModal onClose={handleCloseSchoolInfo} />}
     </div>
   );
 };
