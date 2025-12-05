@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { getSheetData, addScore } from '../services/googleSheetsService';
+import { getSheetData, addScore, updateScore, deleteScore } from '../services/googleSheetsService';
 import type { Student, Score, Teacher, Hafalan } from '../types';
-import { ChevronLeftIcon, BookIcon, PrayingHandsIcon, QuoteIcon, ChartBarIcon, NotYetDevelopedIcon, StartingToDevelopIcon, DevelopingAsExpectedIcon, VeryWellDevelopedIcon } from './icons';
+import { ChevronLeftIcon, BookIcon, PrayingHandsIcon, QuoteIcon, ChartBarIcon, NotYetDevelopedIcon, StartingToDevelopIcon, DevelopingAsExpectedIcon, VeryWellDevelopedIcon, EyeIcon, XIcon } from './icons';
 
 interface TeacherPortalProps {
   onBack: () => void;
@@ -44,7 +44,12 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingScore, setEditingScore] = useState<Score | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deletingScore, setDeletingScore] = useState<Score | null>(null);
+
   const [mainTab, setMainTab] = useState<'input' | 'report'>('input');
   const [activeSubTab, setActiveSubTab] = useState<InputTabKey>('surah1');
 
@@ -63,6 +68,17 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
     Date: new Date().toISOString().split('T')[0],
     Notes: '',
   });
+
+  const [editFormData, setEditFormData] = useState<Omit<Score, 'Timestamp'>>({
+    'Student ID': '',
+    Category: '',
+    'Item Name': '',
+    Score: '',
+    Date: '',
+    Notes: '',
+  });
+
+  const [editCategory, setEditCategory] = useState('');
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -140,6 +156,11 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
     });
   }, [hafalanItems, activeSubTab]);
 
+  const editFilteredHafalanItems = useMemo(() => {
+    if (!editCategory) return hafalanItems;
+    return hafalanItems.filter(item => item.Category === editCategory);
+  }, [hafalanItems, editCategory]);
+
   const filteredScores = useMemo(() => {
     let filtered = scores;
     if (selectedStudent) {
@@ -197,6 +218,34 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
     setFormData(prev => ({ ...prev, Score: scoreValue }));
   }
 
+  const handleEditChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditScoreSelect = (scoreValue: string) => {
+    setEditFormData(prev => ({ ...prev, Score: scoreValue }));
+  };
+
+  const handleEdit = (score: Score) => {
+    setEditingScore(score);
+    setEditFormData({
+      'Student ID': score['Student ID'],
+      Category: score.Category,
+      'Item Name': score['Item Name'],
+      Score: score.Score,
+      Date: score.Date,
+      Notes: score.Notes || '',
+    });
+    setEditCategory(score.Category);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDelete = (score: Score) => {
+    setDeletingScore(score);
+    setIsDeleteConfirmOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData['Student ID'] || !formData['Item Name'] || !formData.Score) {
@@ -220,6 +269,65 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan yang tidak diketahui.';
       setSubmitStatus({ message: `Gagal mengirim data: ${errorMessage}`, type: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editFormData['Student ID'] || !editFormData['Item Name'] || !editFormData.Score) {
+      setSubmitStatus({ message: 'Silakan lengkapi semua pilihan: siswa, item, dan penilaian.', type: 'error' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+    try {
+      const result = await updateScore(editFormData);
+      setSubmitStatus({ message: result.message, type: 'success' });
+      // Refresh scores
+      const scoreData = await getSheetData<Score>('score');
+      const studentIds = new Set(students.map(s => s.NISN));
+      const teacherScores = scoreData.filter(score => studentIds.has(score['Student ID']));
+      setScores(teacherScores.sort((a, b) => new Date(b.Date).getTime() - new Date(a.Date).getTime()));
+      setIsEditModalOpen(false);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan yang tidak diketahui.';
+      setSubmitStatus({ message: `Gagal mengupdate data: ${errorMessage}`, type: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingScore) return;
+
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+    try {
+      const result = await deleteScore(deletingScore);
+      setSubmitStatus({ message: result.message, type: 'success' });
+      // Refresh scores
+      const scoreData = await getSheetData<Score>('score');
+      const studentIds = new Set(students.map(s => s.NISN));
+      const teacherScores = scoreData.filter(score => studentIds.has(score['Student ID']));
+      setScores(teacherScores.sort((a, b) => new Date(b.Date).getTime() - new Date(a.Date).getTime()));
+      // Handle pagination
+      const newFilteredScores = teacherScores.filter(score => {
+        if (selectedStudent && score['Student ID'] !== selectedStudent) return false;
+        if (startDate && score.Date < startDate) return false;
+        if (endDate && score.Date > endDate) return false;
+        return true;
+      });
+      const newTotalPages = Math.ceil(newFilteredScores.length / itemsPerPage);
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages);
+      }
+      setIsDeleteConfirmOpen(false);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan yang tidak diketahui.';
+      setSubmitStatus({ message: `Gagal menghapus data: ${errorMessage}`, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -330,6 +438,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Rating</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Tanggal</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Catatan</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">AKSI</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -342,6 +451,14 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
                   <td className="px-4 py-4 text-sm text-gray-900 font-semibold break-words">{score.Score}</td>
                   <td className="px-4 py-4 text-sm text-gray-500 break-words">{score.Date}</td>
                   <td className="px-4 py-4 text-sm text-gray-900 break-words">{score.Notes || '-'}</td>
+                  <td className="px-4 py-4 text-sm text-gray-900 break-words">
+                    <button onClick={() => handleEdit(score)} className="text-blue-600 hover:text-blue-800 mr-2" title="Edit">
+                      <EyeIcon className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => handleDelete(score)} className="text-red-600 hover:text-red-800" title="Delete">
+                      <XIcon className="w-5 h-5" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -485,6 +602,92 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
         )}
         {mainTab === 'report' && renderReport()}
       </div>
+
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={() => setIsEditModalOpen(false)}>
+          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white max-h-screen overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Penilaian</h3>
+              <form onSubmit={handleEditSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="editStudentID" className="block text-sm font-medium text-gray-700">Siswa</label>
+                    <select id="editStudentID" name="Student ID" value={editFormData['Student ID']} onChange={handleEditChange} required className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md">
+                      <option value="">Pilih Siswa</option>
+                      {students.map((student, index) => <option key={`${student.NISN}-${index}`} value={student.NISN}>{student.Name} ({student.NISN})</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="editCategory" className="block text-sm font-medium text-gray-700">Kategori</label>
+                    <select id="editCategory" name="Category" value={editFormData.Category} onChange={e => { handleEditChange(e); setEditCategory(e.target.value); setEditFormData(p => ({...p, 'Item Name': ''})); }} required className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md">
+                      <option value="">Pilih Kategori</option>
+                      <option value="Hafalan Surah Pendek">Hafalan Surah Pendek</option>
+                      <option value="Hafalan Doa Sehari-hari">Hafalan Doa Sehari-hari</option>
+                      <option value="Hafalan Hadist">Hafalan Hadist</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="editItemName" className="block text-sm font-medium text-gray-700">Nama Item Penilaian</label>
+                    <select id="editItemName" name="Item Name" value={editFormData['Item Name']} onChange={handleEditChange} required disabled={isLoadingHafalan || editFilteredHafalanItems.length === 0} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md disabled:bg-gray-100">
+                      <option value="">{isLoadingHafalan ? 'Memuat item...' : 'Pilih Item'}</option>
+                      {editFilteredHafalanItems.map(item => <option key={`${item.ItemName}-${item.Semester}`} value={item.ItemName}>{item.ItemName}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="editDate" className="block text-sm font-medium text-gray-700">Tanggal</label>
+                    <input type="date" id="editDate" name="Date" value={editFormData.Date} onChange={handleEditChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"/>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Penilaian</label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {SCORE_OPTIONS.map(option => {
+                      const scheme = colorSchemes[option.color as keyof typeof colorSchemes];
+                      const isSelected = editFormData.Score === option.value;
+                      return (
+                        <button type="button" key={option.value} onClick={() => handleEditScoreSelect(option.value)} className={`flex flex-col items-center justify-center text-center p-3 rounded-lg border-2 transition-all duration-200 focus:outline-none ${scheme.bg} ${scheme.text} ${isSelected ? `${scheme.selected} ring-2 ring-offset-1` : `${scheme.border} hover:shadow-md hover:-translate-y-1`}`}>
+                          <option.Icon className="w-8 h-8 mb-2" />
+                          <span className="font-bold text-lg">{option.value}</span>
+                          <span className="text-xs">{option.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="editNotes" className="block text-sm font-medium text-gray-700">Catatan (Opsional)</label>
+                  <textarea id="editNotes" name="Notes" value={editFormData.Notes} onChange={handleEditChange} rows={3} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Batal</button>
+                  <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:bg-gray-400">
+                    {isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDeleteConfirmOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={() => setIsDeleteConfirmOpen(false)}>
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" onClick={e => e.stopPropagation()}>
+            <div className="mt-3 text-center">
+              <h3 className="text-lg font-medium text-gray-900">Konfirmasi Hapus</h3>
+              <p className="text-sm text-gray-500 mt-2">Apakah Anda yakin ingin menghapus penilaian ini?</p>
+              <div className="flex justify-center mt-4 space-x-3">
+                <button onClick={() => setIsDeleteConfirmOpen(false)} className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Batal</button>
+                <button onClick={handleConfirmDelete} disabled={isSubmitting} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400">
+                  {isSubmitting ? 'Menghapus...' : 'Hapus'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

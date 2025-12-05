@@ -145,3 +145,65 @@ export const addScore = async (scoreData: Omit<Score, 'Timestamp'>): Promise<{su
         throw error;
     }
 };
+
+export const updateScore = async (scoreData: Omit<Score, 'Timestamp'>): Promise<{success: boolean, message: string}> => {
+    try {
+        const response = await fetch(WEB_APP_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8',
+            },
+            body: JSON.stringify({
+                action: 'updateScore',
+                data: scoreData
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server responded with an error: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            return { success: true, message: result.message || 'Penilaian berhasil diupdate!' };
+        } else {
+            throw new Error(result.message || 'Terjadi kesalahan di server.');
+        }
+
+    } catch (error) {
+        console.error('Failed to update score:', error);
+        throw error;
+    }
+};
+
+export const deleteScore = async (scoreData: Score): Promise<{success: boolean, message: string}> => {
+    try {
+        const response = await fetch(WEB_APP_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8',
+            },
+            body: JSON.stringify({
+                action: 'deleteScore',
+                data: scoreData
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server responded with an error: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            return { success: true, message: result.message || 'Penilaian berhasil dihapus!' };
+        } else {
+            throw new Error(result.message || 'Terjadi kesalahan di server.');
+        }
+
+    } catch (error) {
+        console.error('Failed to delete score:', error);
+        throw error;
+    }
+};
