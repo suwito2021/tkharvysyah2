@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getSheetData, addScore, updateScore, deleteScore } from '../services/googleSheetsService';
 import type { Student, Score, Teacher, Hafalan } from '../types';
-import { ChevronLeftIcon, BookIcon, PrayingHandsIcon, QuoteIcon, ChartBarIcon, NotYetDevelopedIcon, StartingToDevelopIcon, DevelopingAsExpectedIcon, VeryWellDevelopedIcon, EyeIcon, XIcon } from './icons';
+import { ChevronLeftIcon, BookIcon, PrayingHandsIcon, QuoteIcon, ChartBarIcon, NotYetDevelopedIcon, StartingToDevelopIcon, DevelopingAsExpectedIcon, VeryWellDevelopedIcon, PencilIcon, TrashIcon } from './icons';
 
 interface TeacherPortalProps {
   onBack: () => void;
@@ -452,11 +452,11 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
                   <td className="px-4 py-4 text-sm text-gray-500 break-words">{score.Date}</td>
                   <td className="px-4 py-4 text-sm text-gray-900 break-words">{score.Notes || '-'}</td>
                   <td className="px-4 py-4 text-sm text-gray-900 break-words">
-                    <button onClick={() => handleEdit(score)} className="text-blue-600 hover:text-blue-800 mr-2" title="Edit">
-                      <EyeIcon className="w-5 h-5" />
+                    <button onClick={() => handleEdit(score)} className="text-blue-600 hover:text-blue-800 mr-2 transition-colors duration-200" title="Edit">
+                      <PencilIcon className="w-5 h-5" />
                     </button>
-                    <button onClick={() => handleDelete(score)} className="text-red-600 hover:text-red-800" title="Delete">
-                      <XIcon className="w-5 h-5" />
+                    <button onClick={() => handleDelete(score)} className="text-red-600 hover:text-red-800 transition-colors duration-200" title="Delete">
+                      <TrashIcon className="w-5 h-5" />
                     </button>
                   </td>
                 </tr>
