@@ -146,7 +146,7 @@ export const addScore = async (scoreData: Omit<Score, 'Timestamp'>): Promise<{su
     }
 };
 
-export const updateScore = async (scoreData: Omit<Score, 'Timestamp'>): Promise<{success: boolean, message: string}> => {
+export const updateScore = async (scoreData: Score): Promise<{success: boolean, message: string}> => {
     try {
         const response = await fetch(WEB_APP_URL, {
             method: 'POST',

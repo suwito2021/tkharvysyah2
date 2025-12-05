@@ -47,6 +47,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingScore, setEditingScore] = useState<Score | null>(null);
+  const [editSubmitStatus, setEditSubmitStatus] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deletingScore, setDeletingScore] = useState<Score | null>(null);
 
@@ -238,6 +239,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
       Notes: score.Notes || '',
     });
     setEditCategory(score.Category);
+    setEditSubmitStatus(null);
     setIsEditModalOpen(true);
   };
 
@@ -277,15 +279,19 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editFormData['Student ID'] || !editFormData['Item Name'] || !editFormData.Score) {
-      setSubmitStatus({ message: 'Silakan lengkapi semua pilihan: siswa, item, dan penilaian.', type: 'error' });
+      setEditSubmitStatus({ message: 'Silakan lengkapi semua pilihan: siswa, item, dan penilaian.', type: 'error' });
       return;
     }
 
     setIsSubmitting(true);
-    setSubmitStatus(null);
+    setEditSubmitStatus(null);
     try {
-      const result = await updateScore(editFormData);
-      setSubmitStatus({ message: result.message, type: 'success' });
+      const updatedScore: Score = {
+        ...editFormData,
+        Timestamp: editingScore?.Timestamp || '',
+      };
+      const result = await updateScore(updatedScore);
+      setEditSubmitStatus({ message: result.message, type: 'success' });
       // Refresh scores
       const scoreData = await getSheetData<Score>('score');
       const studentIds = new Set(students.map(s => s.NISN));
@@ -294,7 +300,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
       setIsEditModalOpen(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan yang tidak diketahui.';
-      setSubmitStatus({ message: `Gagal mengupdate data: ${errorMessage}`, type: 'error' });
+      setEditSubmitStatus({ message: `Gagal mengupdate data: ${errorMessage}`, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -667,6 +673,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ onBack, teacher }) => {
                   </button>
                 </div>
               </form>
+              {editSubmitStatus && <div className={`mt-4 p-4 rounded-md text-sm ${editSubmitStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{editSubmitStatus.message}</div>}
             </div>
           </div>
         </div>
